@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+body {
+  background: #3a6ea5;
+  font-family: Tahoma, "Segoe UI", Verdana, Arial, sans-serif;
+  color: #000;
+}
+
+/* Classic window chrome */
+.win-frame {
+  background: #d4d0c8;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.titlebar {
+  background: linear-gradient(90deg, #0a246a, #3a6ea5);
+}
+
+/* Classic buttons */
+.btn95 {
+  background: #d4d0c8;
+  border: 2px solid;
+  border-color: #ffffff #6d6a5e #6d6a5e #ffffff;
+  padding: 4px 14px;
+  font-size: 13px;
+  color: #000;
+  cursor: pointer;
+}
+.btn95:active:not(:disabled) {
+  border-color: #6d6a5e #ffffff #ffffff #6d6a5e;
+}
+.btn95:disabled {
+  color: #8a867a;
+  cursor: default;
+}
+.btn95.pressed {
+  border-color: #6d6a5e #ffffff #ffffff #6d6a5e;
+  background: #e6e3db;
+}
+.btn95-default {
+  font-weight: 700;
+}
+
+/* Sunken input fields */
+.field95 {
+  background: #fff;
+  border: 2px solid;
+  border-color: #848484 #ffffff #ffffff #848484;
+  padding: 4px 7px;
+  font-size: 13px;
+  color: #000;
+}
+.field95:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px #7ea6d3;
+}
+
+/* Group boxes (fieldsets) */
+.groupbox {
+  border: 1px solid #9c9a92;
+  background: #d4d0c8;
+  box-shadow: inset 1px 1px 0 #ffffff;
+  padding: 10px 14px 14px;
+}
+.groupbox > legend {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+/* Sunken white panels (tables, previews) */
+.bevel-in {
+  background: #fff;
+  border: 2px solid;
+  border-color: #848484 #ffffff #ffffff #848484;
+}
+
+/* Desktop icon labels */
+.desktop-label {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Classic tables */
+.tbl95 {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tbl95 th {
+  background: #d4d0c8;
+  border: 1px solid #9c9a92;
+  padding: 5px 8px;
+  text-align: left;
+  font-weight: 700;
+}
+.tbl95 td {
+  border: 1px solid #d9d6cf;
+  padding: 5px 8px;
+}
+
+.link95 {
+  color: #0000cc;
+  text-decoration: underline;
+}
+.link95:hover {
+  color: #3a6ea5;
+}
+
+/* The invoice document keeps a clean modern typeface */
+.print-area {
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+@page {
+  size: A4;
+  margin: 10mm 12mm;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+  .no-print,
+  .titlebar {
+    display: none !important;
+  }
+  /* Strip app chrome so the invoice flows naturally from the top of page 1 */
+  .app-shell {
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+  .win-frame {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  .win-body {
+    padding: 0 !important;
+  }
+  .print-area {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* Keep rows and key blocks intact across page breaks */
+  .print-area tr,
+  .avoid-break {
+    break-inside: avoid;
+  }
+}
