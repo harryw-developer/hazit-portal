@@ -171,7 +171,16 @@ export default function QuoteEditorPage() {
 
           <fieldset className="groupbox">
             <legend>Items</legend>
-            <div className="space-y-2">
+            <div className="hidden gap-2 border-b border-[#9c9a92] pb-1.5 text-[11px] font-bold sm:grid sm:grid-cols-[80px_1fr_60px_100px_60px_80px_30px]">
+              <div>Type</div>
+              <div>Description</div>
+              <div className="text-right">Qty / Hrs</div>
+              <div className="text-right">Cost / Rate</div>
+              <div className="text-right">VAT %</div>
+              <div className="text-right">Amount</div>
+              <div />
+            </div>
+            <div className="space-y-2 pt-2">
               {items.map((it, i) => (
                 <div key={i} className="grid grid-cols-2 items-start gap-2 sm:grid-cols-[80px_1fr_60px_100px_60px_80px_30px]">
                   <select className={smallInputCls} value={it.item_type} onChange={(e) => setItem(i, { item_type: e.target.value as ItemType })}>

@@ -5,12 +5,10 @@ import { formatDate, formatMoney, today } from '../lib/format'
 import type { Invoice } from '../lib/types'
 import { BackBar, EmptyState, PageHeading, PortalCard, StatusPill } from './ui'
 
+// Customers never see internal states like "draft" — just whether it needs paying.
 function statusPill(inv: Invoice) {
   if (inv.status === 'paid') return <StatusPill text="Paid" tone="green" />
-  if (inv.status === 'cancelled') return <StatusPill text="Cancelled" tone="gray" />
-  if ((inv.status === 'sent' || inv.status === 'overdue') && inv.due_date < today())
-    return <StatusPill text="Please pay" tone="red" />
-  if (inv.status === 'draft') return <StatusPill text="Draft" tone="gray" />
+  if (inv.due_date < today()) return <StatusPill text="Please pay" tone="red" />
   return <StatusPill text="Due" tone="amber" />
 }
 
@@ -23,7 +21,7 @@ export default function PortalInvoices() {
       const { data } = await supabase
         .from('invoices')
         .select('*')
-        .neq('status', 'draft')
+        .neq('status', 'cancelled')
         .order('issue_date', { ascending: false })
       setInvoices((data as Invoice[]) || [])
       setLoading(false)
