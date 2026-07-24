@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { addDays, formatDate, formatMoney, today } from '../../lib/format'
-import { btnPrimary } from '../../lib/ui'
+import { btnPrimary, btnSecondary } from '../../lib/ui'
 import type { Quote, QuoteItem, QuoteStatus } from '../../lib/types'
 
 type Row = Quote & { customer: { name: string } | null }
@@ -91,15 +91,37 @@ export default function QuoteListPage() {
     await load()
   }
 
+  async function removeQuote(q: Row) {
+    if (!window.confirm(`Delete quote ${q.quote_number}? This cannot be undone.`)) return
+    await supabase.from('quotes').delete().eq('id', q.id)
+    await load()
+  }
+
+  async function clearOld() {
+    const stale = rows.filter((q) => ['declined', 'expired', 'converted'].includes(q.status))
+    if (stale.length === 0) {
+      window.alert('There are no old quotes to clear (declined, expired or already-invoiced).')
+      return
+    }
+    if (!window.confirm(`Delete ${stale.length} old quote(s) — declined, expired and already-invoiced? This cannot be undone.`)) return
+    await supabase.from('quotes').delete().in('id', stale.map((q) => q.id!))
+    await load()
+  }
+
   return (
     <div className="text-[13px]">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12px] text-[#4b4a44]">
           Send estimates; customers approve or decline from their portal. Approved quotes convert to invoices.
         </p>
-        <button className={btnPrimary} onClick={() => navigate('/apps/quotes/new')}>
-          New quote…
-        </button>
+        <div className="flex gap-2">
+          <button className={btnSecondary} onClick={clearOld}>
+            Clear old quotes
+          </button>
+          <button className={btnPrimary} onClick={() => navigate('/apps/quotes/new')}>
+            New quote…
+          </button>
+        </div>
       </div>
 
       <div className="bevel-in overflow-x-auto">
@@ -147,8 +169,11 @@ export default function QuoteListPage() {
                         → Invoice
                       </button>
                     )}
-                    <button className="link95" onClick={() => navigate(`/apps/quotes/${q.id}`)}>
+                    <button className="link95 mr-3" onClick={() => navigate(`/apps/quotes/${q.id}`)}>
                       Open
+                    </button>
+                    <button className="link95 text-red-600" onClick={() => removeQuote(q)}>
+                      Delete
                     </button>
                   </td>
                 </tr>

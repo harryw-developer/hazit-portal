@@ -212,6 +212,18 @@ function randomPassword() {
   return `${w()}${w()}${Math.floor(1000 + Math.random() * 9000)}`
 }
 
+// Calls the manage-users edge function, retrying once (the admin API very
+// occasionally returns a transient JWT error).
+async function callManageUsers(body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await supabase.functions.invoke('manage-users', { body })
+    if (!error && !data?.error) return { ok: true }
+    if (attempt === 1) return { ok: false, error: (data?.error as string) || error?.message || 'Request failed' }
+    await new Promise((r) => setTimeout(r, 700))
+  }
+  return { ok: false, error: 'Request failed' }
+}
+
 function LoginManager({
   customer,
   profile,
@@ -228,6 +240,11 @@ function LoginManager({
   const [password, setPassword] = useState(randomPassword())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [storedPw, setStoredPw] = useState(profile?.shared_password || '')
+  const [showPw, setShowPw] = useState(false)
+  const [newPw, setNewPw] = useState(randomPassword())
+  const [mode, setMode] = useState(profile?.portal_mode || 'easy')
 
   async function createLogin() {
     if (!email.trim() || !password.trim()) {
@@ -236,19 +253,17 @@ function LoginManager({
     }
     setBusy(true)
     setError('')
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: {
-        action: 'create_customer_login',
-        email: email.trim(),
-        password,
-        username: username.trim() || null,
-        customer_id: customer.id,
-        full_name: customer.contact_name || customer.name,
-      },
+    const res = await callManageUsers({
+      action: 'create_customer_login',
+      email: email.trim(),
+      password,
+      username: username.trim() || null,
+      customer_id: customer.id,
+      full_name: customer.contact_name || customer.name,
     })
     setBusy(false)
-    if (error || data?.error) {
-      setError(data?.error || 'Could not create the login. The email may already be in use.')
+    if (!res.ok) {
+      setError(res.error || 'Could not create the login. The email may already be in use.')
       return
     }
     onChanged(
@@ -257,30 +272,36 @@ function LoginManager({
   }
 
   async function resetPassword() {
-    if (!profile) return
-    const newPw = randomPassword()
+    if (!profile || !newPw.trim()) return
     setBusy(true)
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'reset_password', user_id: profile.id, password: newPw },
-    })
+    setError('')
+    setNotice('')
+    const res = await callManageUsers({ action: 'reset_password', user_id: profile.id, password: newPw })
     setBusy(false)
-    if (error || data?.error) {
-      setError(data?.error || 'Could not reset the password.')
+    if (!res.ok) {
+      setError(res.error || 'Could not reset the password.')
       return
     }
-    onChanged(`New password for ${customer.name}: ${newPw} — share it with your customer.`)
+    setStoredPw(newPw)
+    setShowPw(true)
+    setNotice(`Password updated. New password: ${newPw}`)
+  }
+
+  async function setPortalMode(next: 'easy' | 'standard') {
+    if (!profile) return
+    setMode(next)
+    await supabase.from('profiles').update({ portal_mode: next }).eq('id', profile.id)
+    setNotice(next === 'easy' ? 'Set to Easy (large) mode.' : 'Set to Standard mode.')
   }
 
   async function removeLogin() {
     if (!profile) return
     if (!window.confirm(`Remove portal access for ${customer.name}?`)) return
     setBusy(true)
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'delete_login', user_id: profile.id },
-    })
+    const res = await callManageUsers({ action: 'delete_login', user_id: profile.id })
     setBusy(false)
-    if (error || data?.error) {
-      setError(data?.error || 'Could not remove the login.')
+    if (!res.ok) {
+      setError(res.error || 'Could not remove the login.')
       return
     }
     onChanged(`Portal access removed for ${customer.name}.`)
@@ -289,22 +310,59 @@ function LoginManager({
   return (
     <RetroModal title={`Portal login — ${customer.name}`} onClose={onClose}>
       {error && <div className="bevel-in mb-3 px-3 py-2 text-[12px] text-red-700">{error}</div>}
+      {notice && <div className="bevel-in mb-3 px-3 py-2 text-[12px] text-green-800">{notice}</div>}
       {profile ? (
-        <div className="space-y-3">
-          <p className="text-[13px]">
-            This customer can already sign in
-            {profile.username ? (
-              <>
-                {' '}
-                with username <b>{profile.username}</b>
-              </>
-            ) : null}
-            .
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button className={btnSecondary} onClick={resetPassword} disabled={busy}>
-              Reset password
-            </button>
+        <div className="space-y-4">
+          <div className="text-[13px]">
+            Signs in with{' '}
+            <b>{profile.username || email || 'their email'}</b>.
+          </div>
+
+          <fieldset className="groupbox">
+            <legend>Current password</legend>
+            {storedPw ? (
+              <div className="flex items-center gap-2">
+                <input className={inputCls} readOnly value={showPw ? storedPw : '••••••••'} />
+                <button className={btnSecondary} type="button" onClick={() => setShowPw((v) => !v)}>
+                  {showPw ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-[12px] text-[#4b4a44]">
+                Not recorded (set before this feature). Set a new one below to make it viewable.
+              </p>
+            )}
+          </fieldset>
+
+          <fieldset className="groupbox">
+            <legend>Set a new password</legend>
+            <div className="flex gap-2">
+              <input className={inputCls} value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="Type any password" />
+              <button className={btnSecondary} type="button" onClick={() => setNewPw(randomPassword())}>
+                Suggest
+              </button>
+              <button className={btnPrimary} onClick={resetPassword} disabled={busy || !newPw.trim()}>
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset className="groupbox">
+            <legend>Portal display mode</legend>
+            <div className="flex gap-2">
+              <button className={`btn95 ${mode === 'easy' ? 'pressed' : ''}`} onClick={() => setPortalMode('easy')}>
+                Easy (large text)
+              </button>
+              <button className={`btn95 ${mode === 'standard' ? 'pressed' : ''}`} onClick={() => setPortalMode('standard')}>
+                Standard dashboard
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] text-[#4b4a44]">
+              Easy mode is bigger and simpler (great for less confident users). Standard is a normal, compact dashboard.
+            </p>
+          </fieldset>
+
+          <div className="flex justify-end">
             <button className={btnSecondary} onClick={removeLogin} disabled={busy}>
               Remove access
             </button>

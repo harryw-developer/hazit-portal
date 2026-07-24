@@ -36,6 +36,22 @@ export default function TicketPage() {
     void load()
   }, [load])
 
+  // Live updates (e.g. live-chat messages from the customer)
+  useEffect(() => {
+    if (!id) return
+    const channel = supabase
+      .channel(`ticket-staff-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${id}` },
+        () => void load(),
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [id, load])
+
   async function sendReply() {
     if (!reply.trim() || !ticket) return
     setBusy(true)

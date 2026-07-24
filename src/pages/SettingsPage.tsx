@@ -128,6 +128,9 @@ export default function SettingsPage() {
         <Field label="Phone">
           <input className={inputCls} value={form.phone} onChange={(e) => set('phone', e.target.value)} />
         </Field>
+        <Field label="Support email (shown on the customer portal)">
+          <input className={inputCls} type="email" value={form.support_email} onChange={(e) => set('support_email', e.target.value)} placeholder="help@hazit.co.uk" />
+        </Field>
         <Field label="Website" wide>
           <input className={inputCls} value={form.website} onChange={(e) => set('website', e.target.value)} />
         </Field>

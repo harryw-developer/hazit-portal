@@ -25,6 +25,7 @@ export interface Settings {
   invoice_notes: string
   invoice_footer: string
   revolut_link: string
+  support_email: string
 }
 
 export interface Customer {
@@ -82,6 +83,7 @@ export interface Invoice {
 }
 
 export type Role = 'staff' | 'customer'
+export type PortalMode = 'easy' | 'standard'
 
 export interface Profile {
   id: string
@@ -89,6 +91,8 @@ export interface Profile {
   customer_id: string | null
   username: string | null
   full_name: string
+  shared_password: string
+  portal_mode: PortalMode
 }
 
 export type TicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed'

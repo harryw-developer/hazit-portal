@@ -29,6 +29,22 @@ export default function PortalTicketView() {
     void load()
   }, [load])
 
+  // Live updates so staff replies appear without refreshing
+  useEffect(() => {
+    if (!id) return
+    const channel = supabase
+      .channel(`ticket-cust-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${id}` },
+        () => void load(),
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [id, load])
+
   async function send() {
     if (!reply.trim() || !ticket) return
     setBusy(true)
