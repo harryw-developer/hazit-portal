@@ -273,13 +273,22 @@ function LoginManager({
 
   async function resetPassword() {
     if (!profile || !newPw.trim()) return
+    if (newPw.trim().length < 6) {
+      setError('Password must be at least 6 characters.')
+      return
+    }
     setBusy(true)
     setError('')
     setNotice('')
-    const res = await callManageUsers({ action: 'reset_password', user_id: profile.id, password: newPw })
+    // Sets the password directly in the database (staff-only RPC) — reliable,
+    // unlike the occasionally-flaky auth admin API.
+    const { error } = await supabase.rpc('set_customer_password', {
+      p_user_id: profile.id,
+      p_password: newPw,
+    })
     setBusy(false)
-    if (!res.ok) {
-      setError(res.error || 'Could not reset the password.')
+    if (error) {
+      setError(error.message || 'Could not set the password.')
       return
     }
     setStoredPw(newPw)
