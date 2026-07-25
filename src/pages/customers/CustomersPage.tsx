@@ -215,9 +215,11 @@ export default function CustomersPage() {
 
       {loginFor && (
         <LoginManager
+          key={loginFor.id}
           customer={loginFor}
           profile={profileFor(loginFor.id)}
           onClose={() => setLoginFor(null)}
+          onRefresh={load}
           onChanged={async (message) => {
             setLoginFor(null)
             setMsg(message)
@@ -252,11 +254,13 @@ function LoginManager({
   profile,
   onClose,
   onChanged,
+  onRefresh,
 }: {
   customer: Customer
   profile: Profile | null
   onClose: () => void
   onChanged: (msg: string) => void
+  onRefresh: () => Promise<void>
 }) {
   const [email, setEmail] = useState(customer.email || '')
   const [username, setUsername] = useState('')
@@ -269,6 +273,13 @@ function LoginManager({
   const [newPw, setNewPw] = useState(randomPassword())
   const [mode, setMode] = useState(profile?.portal_mode || 'easy')
   const [disabled, setDisabled] = useState(profile?.login_disabled || false)
+
+  // Keep the dialog in step with the latest saved data
+  useEffect(() => {
+    setDisabled(profile?.login_disabled || false)
+    setMode(profile?.portal_mode || 'easy')
+    setStoredPw(profile?.shared_password || '')
+  }, [profile])
 
   async function createLogin() {
     if (!email.trim() || !password.trim()) {
@@ -318,6 +329,7 @@ function LoginManager({
     setStoredPw(newPw)
     setShowPw(true)
     setNotice(`Password updated. New password: ${newPw}`)
+    await onRefresh()
   }
 
   async function setPortalMode(next: 'easy' | 'standard') {
@@ -325,6 +337,7 @@ function LoginManager({
     setMode(next)
     await supabase.from('profiles').update({ portal_mode: next }).eq('id', profile.id)
     setNotice(next === 'easy' ? 'Set to Easy (large) mode.' : 'Set to Standard mode.')
+    await onRefresh()
   }
 
   async function toggleDisabled() {
@@ -341,6 +354,7 @@ function LoginManager({
     }
     setDisabled(next)
     setNotice(next ? 'Login disabled — this customer can no longer sign in.' : 'Login enabled — this customer can sign in again.')
+    await onRefresh()
   }
 
   async function removeLogin() {
