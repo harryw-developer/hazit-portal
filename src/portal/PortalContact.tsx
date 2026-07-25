@@ -55,7 +55,7 @@ export default function PortalContact() {
       .channel(`chat-${chat.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${chat.id}` },
+        { event: '*', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${chat.id}` },
         () => void loadMessages(chat.id),
       )
       .subscribe()
@@ -102,6 +102,11 @@ export default function PortalContact() {
     setText('')
     setBusy(false)
     await loadMessages(ticket.id)
+  }
+
+  async function deleteMessage(id: string) {
+    await supabase.from('ticket_messages').delete().eq('id', id)
+    if (chat) await loadMessages(chat.id)
   }
 
   return (
@@ -153,7 +158,7 @@ export default function PortalContact() {
               {messages.map((m) => {
                 const mine = m.author_role === 'customer'
                 return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                     <div
                       className={`max-w-[85%] rounded-2xl px-4 py-3 ${easy ? 'text-lg' : 'text-base'} ${
                         mine ? 'bg-blue-600 text-white' : 'border-2 border-slate-200 bg-white text-slate-800'
@@ -164,6 +169,14 @@ export default function PortalContact() {
                       </div>
                       <div className="whitespace-pre-wrap">{m.body}</div>
                     </div>
+                    {mine && (
+                      <button
+                        onClick={() => deleteMessage(m.id)}
+                        className="mt-0.5 px-1 text-xs text-slate-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 )
               })}

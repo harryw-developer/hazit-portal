@@ -26,6 +26,11 @@ export interface Settings {
   invoice_footer: string
   revolut_link: string
   support_email: string
+  booking_days: string
+  booking_start: string
+  booking_end: string
+  booking_slot_minutes: number
+  booking_services: string
 }
 
 export interface Customer {
@@ -93,6 +98,7 @@ export interface Profile {
   full_name: string
   shared_password: string
   portal_mode: PortalMode
+  login_disabled: boolean
 }
 
 export type TicketStatus = 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed'
@@ -119,6 +125,7 @@ export interface TicketMessage {
   author_role: Role
   author_name: string
   body: string
+  internal: boolean
   created_at: string
 }
 
@@ -166,6 +173,8 @@ export interface Appointment {
   service: string
   preferred_date: string | null
   preferred_time: string
+  starts_at: string | null
+  duration_minutes: number
   location: string
   notes: string
   status: AppointmentStatus

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
-import { btnPrimary, btnSecondary, inputCls } from '../../lib/ui'
-import type { Customer, Ticket, TicketMessage, TicketStatus } from '../../lib/types'
+import { formatDate } from '../../lib/format'
+import { btnPrimary, inputCls } from '../../lib/ui'
+import type { Customer, Ticket, TicketMessage, TicketPriority, TicketStatus } from '../../lib/types'
 
 const STATUSES: TicketStatus[] = ['open', 'in_progress', 'waiting', 'resolved', 'closed']
+const PRIORITIES: TicketPriority[] = ['low', 'normal', 'high', 'urgent']
 
 export default function TicketPage() {
   const { id } = useParams()
@@ -15,6 +17,7 @@ export default function TicketPage() {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [messages, setMessages] = useState<TicketMessage[]>([])
   const [reply, setReply] = useState('')
+  const [internal, setInternal] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
@@ -36,14 +39,13 @@ export default function TicketPage() {
     void load()
   }, [load])
 
-  // Live updates (e.g. live-chat messages from the customer)
   useEffect(() => {
     if (!id) return
     const channel = supabase
       .channel(`ticket-staff-${id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${id}` },
+        { event: '*', schema: 'public', table: 'ticket_messages', filter: `ticket_id=eq.${id}` },
         () => void load(),
       )
       .subscribe()
@@ -61,9 +63,10 @@ export default function TicketPage() {
       author_role: 'staff',
       author_name: profile?.full_name || 'Support',
       body: reply.trim(),
+      internal,
     })
-    // Replying moves an open/waiting ticket into progress
-    if (ticket.status === 'open' || ticket.status === 'waiting') {
+    // A customer-facing reply nudges an open/waiting ticket into progress
+    if (!internal && (ticket.status === 'open' || ticket.status === 'waiting')) {
       await supabase.from('tickets').update({ status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', ticket.id)
     }
     setReply('')
@@ -71,9 +74,15 @@ export default function TicketPage() {
     await load()
   }
 
-  async function setStatus(status: TicketStatus) {
+  async function deleteMessage(m: TicketMessage) {
+    if (!window.confirm('Delete this message?')) return
+    await supabase.from('ticket_messages').delete().eq('id', m.id)
+    await load()
+  }
+
+  async function patchTicket(patch: Partial<Ticket>) {
     if (!ticket) return
-    await supabase.from('tickets').update({ status, updated_at: new Date().toISOString() }).eq('id', ticket.id)
+    await supabase.from('tickets').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', ticket.id)
     await load()
   }
 
@@ -93,42 +102,53 @@ export default function TicketPage() {
               <span className="text-[15px] font-bold">{ticket.subject}</span>
             </div>
             <div className="mt-1 text-[12px] text-[#4b4a44]">
-              {customer?.name || 'Unknown customer'}
-              {ticket.category ? ` · ${ticket.category}` : ''} · priority {ticket.priority}
+              {customer?.name || 'Unknown customer'} · opened {formatDate(ticket.created_at.slice(0, 10))}
             </div>
           </div>
 
           <div className="space-y-2">
-            {messages.length === 0 && (
-              <div className="bevel-in p-3 text-[#8a867a]">No messages yet.</div>
-            )}
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`bevel-in p-3 ${m.author_role === 'staff' ? 'border-l-4 !border-l-blue-500' : 'border-l-4 !border-l-green-500'}`}
-              >
-                <div className="mb-1 flex justify-between text-[11px] text-[#4b4a44]">
-                  <span className="font-bold">
-                    {m.author_name} {m.author_role === 'staff' ? '(you / team)' : '(customer)'}
-                  </span>
-                  <span>{new Date(m.created_at).toLocaleString('en-GB')}</span>
+            {messages.length === 0 && <div className="bevel-in p-3 text-[#8a867a]">No messages yet.</div>}
+            {messages.map((m) => {
+              const border = m.internal
+                ? '!border-l-amber-500'
+                : m.author_role === 'staff'
+                  ? '!border-l-blue-500'
+                  : '!border-l-green-500'
+              return (
+                <div key={m.id} className={`bevel-in border-l-4 p-3 ${border} ${m.internal ? 'bg-[#fff8e7]' : ''}`}>
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-[#4b4a44]">
+                    <span className="font-bold">
+                      {m.author_name} {m.author_role === 'staff' ? '(you / team)' : '(customer)'}
+                      {m.internal && <span className="ml-2 rounded bg-amber-200 px-1 text-amber-900">Internal note</span>}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {new Date(m.created_at).toLocaleString('en-GB')}
+                      <button className="link95 text-red-600" onClick={() => deleteMessage(m)} title="Delete message">
+                        ✕
+                      </button>
+                    </span>
+                  </div>
+                  <div className="whitespace-pre-wrap">{m.body}</div>
                 </div>
-                <div className="whitespace-pre-wrap">{m.body}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="bevel-in p-3">
             <textarea
               className={`${inputCls} w-full`}
               rows={4}
-              placeholder="Type your reply to the customer…"
+              placeholder={internal ? 'Write an internal note (only your team sees this)…' : 'Type your reply to the customer…'}
               value={reply}
               onChange={(e) => setReply(e.target.value)}
             />
-            <div className="mt-2 flex justify-end">
+            <div className="mt-2 flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-[12px]">
+                <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
+                Internal note (not shown to customer)
+              </label>
               <button className={btnPrimary} onClick={sendReply} disabled={busy || !reply.trim()}>
-                {busy ? 'Sending…' : 'Send reply'}
+                {busy ? 'Sending…' : internal ? 'Add note' : 'Send reply'}
               </button>
             </div>
           </div>
@@ -141,7 +161,7 @@ export default function TicketPage() {
               {STATUSES.map((s) => (
                 <button
                   key={s}
-                  onClick={() => setStatus(s)}
+                  onClick={() => patchTicket({ status: s })}
                   className={`btn95 !py-1 text-left capitalize ${ticket.status === s ? 'pressed' : ''}`}
                 >
                   {s.replace('_', ' ')}
@@ -149,6 +169,34 @@ export default function TicketPage() {
               ))}
             </div>
           </fieldset>
+
+          <fieldset className="groupbox">
+            <legend>Priority</legend>
+            <select
+              className={inputCls}
+              value={ticket.priority}
+              onChange={(e) => patchTicket({ priority: e.target.value as TicketPriority })}
+            >
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p} className="capitalize">
+                  {p}
+                </option>
+              ))}
+            </select>
+          </fieldset>
+
+          <fieldset className="groupbox">
+            <legend>Category</legend>
+            <input
+              className={inputCls}
+              defaultValue={ticket.category}
+              onBlur={(e) => {
+                if (e.target.value !== ticket.category) patchTicket({ category: e.target.value })
+              }}
+              placeholder="e.g. Email, Printer…"
+            />
+          </fieldset>
+
           {customer && (
             <fieldset className="groupbox">
               <legend>Customer</legend>
@@ -157,9 +205,6 @@ export default function TicketPage() {
                 {customer.email && <div>{customer.email}</div>}
                 {customer.phone && <div>{customer.phone}</div>}
               </div>
-              <button className={`${btnSecondary} mt-2 w-full`} onClick={() => navigate('/apps/customers')}>
-                Open in Customers
-              </button>
             </fieldset>
           )}
         </div>

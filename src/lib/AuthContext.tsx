@@ -63,7 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email = data as string
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return 'Wrong username/email or password. Please try again.'
+    if (error) {
+      const msg = error.message.toLowerCase()
+      if (msg.includes('banned') || msg.includes('disabled')) {
+        return 'This account has been disabled. Please contact us for help.'
+      }
+      return 'Wrong username/email or password. Please try again.'
+    }
     return null
   }
 

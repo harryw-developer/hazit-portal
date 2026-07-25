@@ -61,6 +61,11 @@ export default function PortalTicketView() {
     await load()
   }
 
+  async function deleteMessage(mid: string) {
+    await supabase.from('ticket_messages').delete().eq('id', mid)
+    await load()
+  }
+
   if (!ticket) return <p className="text-xl text-slate-500">Loading…</p>
 
   return (
@@ -73,7 +78,7 @@ export default function PortalTicketView() {
         {messages.map((m) => {
           const mine = m.author_role === 'customer'
           return (
-            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+            <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-5 py-4 text-lg ${
                   mine ? 'bg-blue-600 text-white' : 'border-2 border-slate-200 bg-white text-slate-800'
@@ -84,6 +89,11 @@ export default function PortalTicketView() {
                 </div>
                 <div className="whitespace-pre-wrap">{m.body}</div>
               </div>
+              {mine && (
+                <button onClick={() => deleteMessage(m.id)} className="mt-0.5 px-1 text-sm text-slate-400 hover:text-red-600">
+                  Delete
+                </button>
+              )}
             </div>
           )
         })}

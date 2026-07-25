@@ -258,6 +258,67 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      <Section
+        title="Appointment booking"
+        desc="Controls the slots customers can choose from in their portal."
+      >
+        <div className="sm:col-span-2">
+          <span className={labelCls}>Working days</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              [1, 'Mon'],
+              [2, 'Tue'],
+              [3, 'Wed'],
+              [4, 'Thu'],
+              [5, 'Fri'],
+              [6, 'Sat'],
+              [7, 'Sun'],
+            ].map(([n, label]) => {
+              const days = (form.booking_days || '').split(',').map((x) => x.trim()).filter(Boolean)
+              const on = days.includes(String(n))
+              return (
+                <button
+                  key={String(n)}
+                  type="button"
+                  className={`btn95 ${on ? 'pressed' : ''}`}
+                  onClick={() => {
+                    const next = on ? days.filter((d) => d !== String(n)) : [...days, String(n)]
+                    next.sort()
+                    set('booking_days', next.join(','))
+                  }}
+                >
+                  {label as string}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <Field label="Day starts">
+          <input className={inputCls} type="time" value={form.booking_start} onChange={(e) => set('booking_start', e.target.value)} />
+        </Field>
+        <Field label="Day ends">
+          <input className={inputCls} type="time" value={form.booking_end} onChange={(e) => set('booking_end', e.target.value)} />
+        </Field>
+        <Field label="Appointment length (minutes)">
+          <input
+            className={inputCls}
+            type="number"
+            min="15"
+            step="15"
+            value={form.booking_slot_minutes}
+            onChange={(e) => set('booking_slot_minutes', Number(e.target.value))}
+          />
+        </Field>
+        <Field label="Services customers can book (one per line)" wide>
+          <textarea
+            className={inputCls}
+            rows={4}
+            value={form.booking_services}
+            onChange={(e) => set('booking_services', e.target.value)}
+          />
+        </Field>
+      </Section>
+
       <Section title="Your login" desc="Change the password you use to sign in to this admin desktop.">
         <ChangePassword />
       </Section>

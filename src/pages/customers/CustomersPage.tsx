@@ -66,6 +66,22 @@ export default function CustomersPage() {
     await load()
   }
 
+  async function deleteCustomer(c: Customer) {
+    if (
+      !window.confirm(
+        `Permanently delete ${c.name}?\n\nThis removes their portal login, tickets, appointments and devices, and unlinks their invoices/quotes. This cannot be undone.`,
+      )
+    )
+      return
+    const { error } = await supabase.rpc('delete_customer', { p_customer_id: c.id })
+    if (error) {
+      setMsg(`Could not delete: ${error.message}`)
+      return
+    }
+    setMsg(`${c.name} deleted.`)
+    await load()
+  }
+
   return (
     <div className="text-[13px]">
       <div className="mb-3 flex items-center justify-between">
@@ -114,17 +130,24 @@ export default function CustomersPage() {
                     <td>{c.phone || '—'}</td>
                     <td>
                       {prof ? (
-                        <span className="text-green-700">✓ {prof.username || 'enabled'}</span>
+                        prof.login_disabled ? (
+                          <span className="text-red-700">⊘ {prof.username || 'disabled'} (disabled)</span>
+                        ) : (
+                          <span className="text-green-700">✓ {prof.username || 'enabled'}</span>
+                        )
                       ) : (
                         <span className="text-[#8a867a]">none</span>
                       )}
                     </td>
-                    <td className="text-right">
+                    <td className="whitespace-nowrap text-right">
                       <button className="link95 mr-3" onClick={() => setEditing({ ...c })}>
                         Edit
                       </button>
-                      <button className="link95" onClick={() => setLoginFor(c)}>
+                      <button className="link95 mr-3" onClick={() => setLoginFor(c)}>
                         {prof ? 'Manage login' : 'Create login'}
+                      </button>
+                      <button className="link95 text-red-600" onClick={() => deleteCustomer(c)}>
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -245,6 +268,7 @@ function LoginManager({
   const [showPw, setShowPw] = useState(false)
   const [newPw, setNewPw] = useState(randomPassword())
   const [mode, setMode] = useState(profile?.portal_mode || 'easy')
+  const [disabled, setDisabled] = useState(profile?.login_disabled || false)
 
   async function createLogin() {
     if (!email.trim() || !password.trim()) {
@@ -303,14 +327,32 @@ function LoginManager({
     setNotice(next === 'easy' ? 'Set to Easy (large) mode.' : 'Set to Standard mode.')
   }
 
+  async function toggleDisabled() {
+    if (!profile) return
+    const next = !disabled
+    setBusy(true)
+    setError('')
+    setNotice('')
+    const { error } = await supabase.rpc('set_login_disabled', { p_user_id: profile.id, p_disabled: next })
+    setBusy(false)
+    if (error) {
+      setError(error.message || 'Could not update the login.')
+      return
+    }
+    setDisabled(next)
+    setNotice(next ? 'Login disabled — this customer can no longer sign in.' : 'Login enabled — this customer can sign in again.')
+  }
+
   async function removeLogin() {
     if (!profile) return
-    if (!window.confirm(`Remove portal access for ${customer.name}?`)) return
+    if (!window.confirm(`Remove portal access for ${customer.name}? They will no longer be able to sign in, but their invoices and history stay.`)) return
     setBusy(true)
-    const res = await callManageUsers({ action: 'delete_login', user_id: profile.id })
+    setError('')
+    // Reliable staff-only RPC (avoids the flaky auth admin API)
+    const { error } = await supabase.rpc('delete_customer_login', { p_user_id: profile.id })
     setBusy(false)
-    if (!res.ok) {
-      setError(res.error || 'Could not remove the login.')
+    if (error) {
+      setError(error.message || 'Could not remove the login.')
       return
     }
     onChanged(`Portal access removed for ${customer.name}.`)
@@ -371,11 +413,24 @@ function LoginManager({
             </p>
           </fieldset>
 
-          <div className="flex justify-end">
-            <button className={btnSecondary} onClick={removeLogin} disabled={busy}>
-              Remove access
-            </button>
-          </div>
+          <fieldset className="groupbox">
+            <legend>Access</legend>
+            <div className="flex items-center gap-2">
+              <span className={`text-[12px] font-bold ${disabled ? 'text-red-700' : 'text-green-700'}`}>
+                {disabled ? '● Disabled — cannot sign in' : '● Active'}
+              </span>
+              <div className="flex-1" />
+              <button className={btnSecondary} onClick={toggleDisabled} disabled={busy}>
+                {disabled ? 'Enable login' : 'Disable login'}
+              </button>
+              <button className={btnSecondary} onClick={removeLogin} disabled={busy}>
+                Remove access
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] text-[#4b4a44]">
+              Disable temporarily blocks sign-in (reversible). Remove deletes the login entirely.
+            </p>
+          </fieldset>
         </div>
       ) : (
         <div className="space-y-3">
