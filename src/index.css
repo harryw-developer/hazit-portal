@@ -112,6 +112,45 @@ body {
   font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
+/* Sensible defaults for staff-authored HTML guides (Tailwind resets these otherwise) */
+.kb-html h1 { font-size: 1.6em; font-weight: 700; margin: 0.8em 0 0.4em; }
+.kb-html h2 { font-size: 1.35em; font-weight: 700; margin: 0.8em 0 0.4em; }
+.kb-html h3 { font-size: 1.15em; font-weight: 700; margin: 0.7em 0 0.3em; }
+.kb-html p { margin: 0 0 0.75em; }
+.kb-html ul,
+.kb-html ol { margin: 0 0 0.75em; padding-left: 1.6em; }
+.kb-html ul { list-style: disc; }
+.kb-html ol { list-style: decimal; }
+.kb-html li { margin-bottom: 0.35em; }
+.kb-html a { color: #1d4ed8; text-decoration: underline; }
+.kb-html strong, .kb-html b { font-weight: 700; }
+.kb-html em, .kb-html i { font-style: italic; }
+.kb-html img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5em 0; }
+.kb-html blockquote {
+  margin: 0 0 0.75em;
+  padding-left: 1em;
+  border-left: 4px solid #cbd5e1;
+  color: #475569;
+}
+.kb-html code {
+  font-family: ui-monospace, Menlo, monospace;
+  background: #f1f5f9;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.kb-html pre {
+  background: #f1f5f9;
+  padding: 0.75em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0 0 0.75em;
+}
+.kb-html table { border-collapse: collapse; margin: 0 0 0.75em; width: 100%; }
+.kb-html th, .kb-html td { border: 1px solid #cbd5e1; padding: 0.4em 0.6em; text-align: left; }
+.kb-html th { background: #f1f5f9; font-weight: 700; }
+.kb-html hr { border: 0; border-top: 1px solid #cbd5e1; margin: 1em 0; }
+
 @page {
   size: A4;
   margin: 10mm 12mm;

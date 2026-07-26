@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { sanitizeHtml } from '../lib/sanitizeHtml'
 import type { KbArticle } from '../lib/types'
 import { BackBar, EmptyState, PageHeading, PortalCard } from './ui'
 
@@ -32,11 +33,18 @@ export default function PortalGuides() {
         <PortalCard>
           <div className="text-sm font-semibold uppercase tracking-wide text-blue-500">{open.category}</div>
           <h1 className="mt-1 text-3xl font-bold text-slate-900">{open.title}</h1>
-          <div className="mt-5 space-y-3 text-xl leading-relaxed text-slate-700">
-            {open.body.split('\n').filter(Boolean).map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
-          </div>
+          {open.body_format === 'html' ? (
+            <div
+              className="kb-html mt-5 text-xl leading-relaxed text-slate-700"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(open.body) }}
+            />
+          ) : (
+            <div className="mt-5 space-y-3 text-xl leading-relaxed text-slate-700">
+              {open.body.split('\n').filter(Boolean).map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
+          )}
         </PortalCard>
       </div>
     )

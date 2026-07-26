@@ -197,12 +197,15 @@ export interface Device {
   created_at: string
 }
 
+export type KbBodyFormat = 'text' | 'html'
+
 export interface KbArticle {
   id: string
   title: string
   category: string
   summary: string
   body: string
+  body_format: KbBodyFormat
   published: boolean
   created_at: string
   updated_at: string
